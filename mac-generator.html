@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MAC Generator</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --surface: #24283b;
+      --text: #c0caf5;
+      --muted: #565f89;
+      --accent: #7aa2f7;
+      --accent-hover: #89b4fa;
+      --success: #9ece6a;
+      --border: #3b4261;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 1.75rem;
+      max-width: 420px;
+      width: 100%;
+      border: 1px solid var(--border);
+    }
+    h1 {
+      margin: 0 0 1.25rem;
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+    .field {
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .select-wrap {
+      position: relative;
+    }
+    .select-wrap::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: 0.9rem;
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid var(--muted);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+    select {
+      width: 100%;
+      padding: 0.5rem 2.5rem 0.5rem 0.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+    select:focus {
+      border-color: var(--accent);
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .row input[type="radio"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .row span {
+      font-size: 0.9rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .group-title {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    .result-wrap {
+      position: relative;
+      margin-top: 1.1rem;
+    }
+    .result-wrap input[type="text"] {
+      width: 100%;
+      padding: 0.65rem 2.75rem 0.65rem 0.85rem;
+      font-size: 1rem;
+      font-family: ui-monospace, monospace;
+      letter-spacing: 0.08em;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      outline: none;
+    }
+    .result-wrap input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+    .btn-copy {
+      position: absolute;
+      top: 50%;
+      right: 0.35rem;
+      transform: translateY(-50%);
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-copy:hover {
+      color: var(--text);
+      background: var(--border);
+    }
+    .btn-copy.copied {
+      color: var(--success);
+    }
+    .btn-copy svg {
+      width: 1.1rem;
+      height: 1.1rem;
+    }
+    .btn {
+      padding: 0.65rem 1rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    .generate-btn {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.75rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>MAC Address Generator</h1>
+
+    <div class="field">
+      <label for="format">Address format</label>
+      <div class="select-wrap">
+        <select id="format">
+          <option value="eui48">MAC-48 / EUI-48 (6 bytes)</option>
+          <option value="eui64">EUI-64 (8 bytes)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="group-title">Address type</div>
+      <div class="row">
+        <input type="radio" name="type" id="type-ug" value="ug" checked>
+        <span data-for="type-ug">Unicast, global</span>
+      </div>
+      <div class="row">
+        <input type="radio" name="type" id="type-ul" value="ul">
+        <span data-for="type-ul">Unicast, local</span>
+      </div>
+      <div class="row">
+        <input type="radio" name="type" id="type-mg" value="mg">
+        <span data-for="type-mg">Multicast, global</span>
+      </div>
+      <div class="row">
+        <input type="radio" name="type" id="type-ml" value="ml">
+        <span data-for="type-ml">Multicast, local</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="group-title">String format</div>
+      <div class="row">
+        <input type="radio" name="stringFormat" id="sf-colon" value="colon" checked>
+        <span data-for="sf-colon">XX:XX:XX:XX:XX:XX</span>
+      </div>
+      <div class="row">
+        <input type="radio" name="stringFormat" id="sf-dash" value="dash">
+        <span data-for="sf-dash">XX-XX-XX-XX-XX-XX</span>
+      </div>
+      <div class="row">
+        <input type="radio" name="stringFormat" id="sf-dot" value="dot">
+        <span data-for="sf-dot">XXXX.XXXX.XXXX</span>
+      </div>
+      <div class="row">
+        <input type="radio" name="stringFormat" id="sf-plain" value="plain">
+        <span data-for="sf-plain">XXXXXXXXXXXX</span>
+      </div>
+    </div>
+
+    <div class="result-wrap">
+      <input type="text" id="output" readonly placeholder="Click &quot;Generate&quot;">
+      <button type="button" class="btn-copy" id="copy" title="Copy" aria-label="Copy">
+        <svg id="copyIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <svg id="checkIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+      </button>
+    </div>
+
+    <button type="button" class="btn btn-primary generate-btn" id="generate">Generate</button>
+  </div>
+
+  <script>
+    const formatEl = document.getElementById('format');
+    const typeRadios = Array.from(document.querySelectorAll('input[name="type"]'));
+    const stringFormatRadios = Array.from(document.querySelectorAll('input[name="stringFormat"]'));
+    const outputEl = document.getElementById('output');
+    const copyBtn = document.getElementById('copy');
+    const generateBtn = document.getElementById('generate');
+    const copyIcon = document.getElementById('copyIcon');
+    const checkIcon = document.getElementById('checkIcon');
+
+    document.querySelectorAll('span[data-for]').forEach(span => {
+      span.addEventListener('click', () => {
+        const id = span.getAttribute('data-for');
+        const input = document.getElementById(id);
+        if (input) {
+          input.checked = true;
+        }
+      });
+    });
+
+    function getSelectedType() {
+      const checked = typeRadios.find(r => r.checked);
+      return checked ? checked.value : 'ug';
+    }
+
+    function getSelectedStringFormat() {
+      const checked = stringFormatRadios.find(r => r.checked);
+      return checked ? checked.value : 'colon';
+    }
+
+    function generateBytes() {
+      const isEui64 = formatEl.value === 'eui64';
+      const length = isEui64 ? 8 : 6;
+      const bytes = new Uint8Array(length);
+      crypto.getRandomValues(bytes);
+
+      let ig = 0;
+      let ul = 0;
+      const type = getSelectedType();
+      if (type === 'ul') {
+        ig = 0;
+        ul = 1;
+      } else if (type === 'mg') {
+        ig = 1;
+        ul = 0;
+      } else if (type === 'ml') {
+        ig = 1;
+        ul = 1;
+      }
+
+      bytes[0] = (bytes[0] & 0b11111100) | ig | (ul << 1);
+      return bytes;
+    }
+
+    function formatBytes(bytes) {
+      const sf = getSelectedStringFormat();
+      const parts = [];
+      for (let i = 0; i < bytes.length; i++) {
+        const hex = bytes[i].toString(16).padStart(2, '0').toUpperCase();
+        parts.push(hex);
+      }
+      if (sf === 'colon') {
+        return parts.join(':');
+      }
+      if (sf === 'dash') {
+        return parts.join('-');
+      }
+      if (sf === 'dot') {
+        const hexStr = parts.join('');
+        const groups = [];
+        for (let i = 0; i < hexStr.length; i += 4) {
+          groups.push(hexStr.slice(i, i + 4));
+        }
+        return groups.join('.');
+      }
+      return parts.join('');
+    }
+
+    function generate() {
+      const bytes = generateBytes();
+      const mac = formatBytes(bytes);
+      outputEl.value = mac;
+      outputEl.placeholder = '';
+    }
+
+    generateBtn.addEventListener('click', generate);
+
+    copyBtn.addEventListener('click', () => {
+      const text = outputEl.value;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        copyIcon.style.display = 'none';
+        checkIcon.style.display = 'block';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyIcon.style.display = 'block';
+          checkIcon.style.display = 'none';
+          copyBtn.classList.remove('copied');
+        }, 1500);
+      });
+    });
+
+    generate();
+  </script>
+</body>
+</html>
+

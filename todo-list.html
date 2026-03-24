@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Todo List</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --surface: #24283b;
+      --text: #c0caf5;
+      --muted: #565f89;
+      --accent: #7aa2f7;
+      --accent-hover: #89b4fa;
+      --danger: #f7768e;
+      --danger-hover: #ff8ca1;
+      --border: #3b4261;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .back-btn {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      width: 2rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: var(--bg);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .back-btn:hover {
+      background: var(--accent-hover);
+    }
+    .back-btn svg {
+      width: 1rem;
+      height: 1rem;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 1.25rem;
+      width: 100%;
+      max-width: 760px;
+      height: min(680px, calc(100vh - 2rem));
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    h1 {
+      margin: 0 0 0.9rem;
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+    .top-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.55rem;
+      margin-bottom: 0.7rem;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.62rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.9rem;
+    }
+    .toolbar-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 0.56rem 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover {
+      border-color: var(--accent);
+      color: var(--accent-hover);
+    }
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+    .btn-danger:hover {
+      color: #11111b;
+      background: var(--danger-hover);
+      border-color: var(--danger-hover);
+    }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-square {
+      width: 2.45rem;
+      min-width: 2.45rem;
+      padding-left: 0;
+      padding-right: 0;
+      font-size: 1.15rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stats {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-bottom: 0.2rem;
+    }
+    .list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) #1f2335;
+    }
+    .list::-webkit-scrollbar {
+      width: 10px;
+    }
+    .list::-webkit-scrollbar-track {
+      background: #1f2335;
+      border-radius: 999px;
+    }
+    .list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 999px;
+      border: 2px solid #1f2335;
+    }
+    .list::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
+    }
+    .todo-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #1f2335;
+      padding: 0.65rem;
+    }
+    .todo-main {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 0.55rem;
+      align-items: center;
+    }
+    .todo-title {
+      margin: 0;
+      font-size: 0.95rem;
+      word-break: break-word;
+    }
+    .todo-item.completed > .todo-main .todo-title {
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+    .todo-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.9rem;
+      height: 1.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .icon-btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+      background: rgba(122, 162, 247, 0.08);
+    }
+    .icon-btn.danger:hover {
+      color: var(--danger-hover);
+      border-color: var(--danger);
+      background: rgba(247, 118, 142, 0.1);
+    }
+    .icon-btn svg {
+      width: 1rem;
+      height: 1rem;
+    }
+    .muted {
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      min-height: 0;
+      margin-top: 0.45rem;
+      padding: 0.5rem;
+    }
+    .hidden {
+      display: none;
+    }
+    @media (max-width: 640px) {
+      .card {
+        padding: 1rem;
+        height: min(680px, calc(100vh - 2rem));
+      }
+      .top-row {
+        grid-template-columns: 1fr;
+      }
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .todo-main {
+        grid-template-columns: auto 1fr auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back-btn" aria-label="Back to home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
+  <div class="card">
+    <h1>Todo List</h1>
+    <div class="top-row">
+      <input id="taskInput" type="text" placeholder="Add a new task and press Enter">
+      <button class="btn btn-primary btn-square" id="addTaskBtn" type="button" aria-label="Add task" title="Add task">+</button>
+    </div>
+    <div class="toolbar">
+      <div class="toolbar-group">
+        <button class="btn btn-ghost" id="exportBtn" type="button">Export JSON</button>
+        <button class="btn btn-ghost" id="importBtn" type="button">Import JSON</button>
+        <button class="btn btn-danger" id="clearAllBtn" type="button">Clear All</button>
+        <input id="importInput" type="file" accept="application/json,.json" class="hidden">
+      </div>
+    </div>
+    <div class="stats" id="stats">Tasks: 0 active | 0 completed</div>
+    <ul class="list" id="todoList"></ul>
+    <div class="muted" id="emptyState">No tasks yet. Add your first task.</div>
+  </div>
+  <script>
+    const STORAGE_KEY = 'todo-list-v1';
+    const taskInput = document.getElementById('taskInput');
+    const addTaskBtn = document.getElementById('addTaskBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importInput = document.getElementById('importInput');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const statsEl = document.getElementById('stats');
+    const listEl = document.getElementById('todoList');
+    const emptyStateEl = document.getElementById('emptyState');
+
+    let todos = [];
+
+    function createId() {
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function normalizeTodo(raw) {
+      if (!raw || typeof raw !== 'object') return null;
+      const title = typeof raw.title === 'string' ? raw.title.trim() : '';
+      if (!title) return null;
+      return {
+        id: typeof raw.id === 'string' ? raw.id : createId(),
+        title,
+        completed: Boolean(raw.completed)
+      };
+    }
+
+    function loadTodos() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(normalizeTodo).filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    function saveTodos() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+    }
+
+    function updateStatusUi() {
+      const totalTasks = todos.length;
+      const completedTasks = todos.filter((todo) => todo.completed).length;
+      const activeTasks = totalTasks - completedTasks;
+      statsEl.textContent = `Tasks: ${activeTasks} active | ${completedTasks} completed`;
+      clearAllBtn.disabled = totalTasks === 0;
+    }
+
+    function render() {
+      listEl.innerHTML = '';
+      const isEmpty = todos.length === 0;
+      emptyStateEl.style.display = isEmpty ? 'flex' : 'none';
+      listEl.style.display = isEmpty ? 'none' : 'flex';
+      todos.forEach((todo) => {
+        const item = document.createElement('li');
+        item.className = `todo-item${todo.completed ? ' completed' : ''}`;
+        item.dataset.id = todo.id;
+
+        const main = document.createElement('div');
+        main.className = 'todo-main';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'todo-checkbox';
+        checkbox.checked = todo.completed;
+        checkbox.setAttribute('aria-label', 'Toggle task completed');
+        checkbox.addEventListener('change', () => toggleTodo(todo.id));
+
+        const title = document.createElement('p');
+        title.className = 'todo-title';
+        title.textContent = todo.title;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'icon-btn danger';
+        deleteBtn.setAttribute('aria-label', 'Delete task');
+        deleteBtn.title = 'Delete task';
+        deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+        deleteBtn.addEventListener('click', () => deleteTodo(todo.id));
+
+        main.append(checkbox, title, deleteBtn);
+        item.appendChild(main);
+
+        listEl.appendChild(item);
+      });
+      updateStatusUi();
+    }
+
+    function addTodo() {
+      const title = taskInput.value.trim();
+      if (!title) return;
+      todos.unshift({
+        id: createId(),
+        title,
+        completed: false
+      });
+      taskInput.value = '';
+      saveTodos();
+      render();
+      taskInput.focus();
+    }
+
+    function toggleTodo(todoId) {
+      todos = todos.map((todo) => {
+        if (todo.id !== todoId) return todo;
+        return { ...todo, completed: !todo.completed };
+      });
+      saveTodos();
+      render();
+    }
+
+    function deleteTodo(todoId) {
+      todos = todos.filter((todo) => todo.id !== todoId);
+      saveTodos();
+      render();
+    }
+
+    function clearAll() {
+      if (todos.length === 0) return;
+      const confirmed = confirm('Clear all tasks?');
+      if (!confirmed) return;
+      todos = [];
+      saveTodos();
+      render();
+    }
+
+    function exportJson() {
+      const data = JSON.stringify(todos, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `todo-list-${date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJson(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || '[]'));
+          if (!Array.isArray(parsed)) throw new Error('Invalid file format');
+          const imported = parsed.map(normalizeTodo).filter(Boolean);
+          todos = imported;
+          saveTodos();
+          render();
+        } catch {
+          alert('Import failed. Please choose a valid Todo JSON file.');
+        }
+      };
+      reader.onerror = () => {
+        alert('Import failed. Could not read file.');
+      };
+      reader.readAsText(file);
+    }
+
+    addTaskBtn.addEventListener('click', addTodo);
+    taskInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') addTodo();
+    });
+    exportBtn.addEventListener('click', exportJson);
+    importBtn.addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', () => {
+      const file = importInput.files && importInput.files[0];
+      if (file) importJson(file);
+      importInput.value = '';
+    });
+    clearAllBtn.addEventListener('click', clearAll);
+
+    todos = loadTodos();
+    render();
+  </script>
+</body>
+</html>

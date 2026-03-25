@@ -192,7 +192,7 @@
     }
     .todo-main {
       display: grid;
-      grid-template-columns: auto 1fr auto;
+      grid-template-columns: auto 1fr auto auto;
       gap: 0.55rem;
       align-items: center;
     }
@@ -255,10 +255,75 @@
     .hidden {
       display: none;
     }
+    .advanced {
+      margin-top: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #1f2335;
+      overflow: hidden;
+    }
+    .advanced-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.65rem 0.75rem;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      text-align: left;
+    }
+    .advanced-header:hover {
+      color: var(--text);
+      background: rgba(122, 162, 247, 0.06);
+    }
+    .advanced-title {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .advanced-subtitle {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .advanced-chevron {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: 0 0 auto;
+      color: var(--muted);
+      transition: transform 0.15s ease, color 0.15s ease;
+    }
+    .advanced.open .advanced-chevron {
+      transform: rotate(180deg);
+      color: var(--text);
+    }
+    .advanced-panel {
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.18s ease, opacity 0.18s ease;
+      padding: 0 0.75rem;
+    }
+    .advanced.open .advanced-panel {
+      max-height: 120px;
+      opacity: 1;
+      padding-bottom: 0.75rem;
+    }
+    .advanced-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      padding-top: 0.1rem;
+    }
     @media (max-width: 640px) {
       .card {
         padding: 1rem;
-        height: min(680px, calc(100vh - 2rem));
       }
       .top-row {
         grid-template-columns: 1fr;
@@ -268,7 +333,7 @@
         align-items: stretch;
       }
       .todo-main {
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto 1fr auto auto;
       }
     }
   </style>
@@ -283,29 +348,51 @@
     </div>
     <div class="toolbar">
       <div class="toolbar-group">
-        <button class="btn btn-ghost" id="exportBtn" type="button">Export JSON</button>
-        <button class="btn btn-ghost" id="importBtn" type="button">Import JSON</button>
+        <button class="btn btn-ghost" id="exportMdBtn" type="button">Export MD</button>
+        <button class="btn btn-ghost" id="importMdBtn" type="button">Import MD</button>
         <button class="btn btn-danger" id="clearAllBtn" type="button">Clear All</button>
-        <input id="importInput" type="file" accept="application/json,.json" class="hidden">
+        <input id="importMdInput" type="file" accept="text/markdown,.md,text/plain" class="hidden">
       </div>
     </div>
     <div class="stats" id="stats">Tasks: 0 active | 0 completed</div>
     <ul class="list" id="todoList"></ul>
     <div class="muted" id="emptyState">No tasks yet. Add your first task.</div>
+    <div class="advanced" id="advancedJson">
+      <button class="advanced-header" id="advancedJsonToggle" type="button" aria-expanded="false">
+        <span class="advanced-title">
+          <span>Advanced</span>
+          <span class="advanced-subtitle">(JSON import/export)</span>
+        </span>
+        <svg class="advanced-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="advanced-panel">
+        <div class="advanced-actions">
+          <button class="btn btn-ghost" id="exportJsonBtn" type="button">Export JSON</button>
+          <button class="btn btn-ghost" id="importJsonBtn" type="button">Import JSON</button>
+          <input id="importJsonInput" type="file" accept="application/json,.json" class="hidden">
+        </div>
+      </div>
+    </div>
   </div>
   <script>
     const STORAGE_KEY = 'todo-list-v1';
     const taskInput = document.getElementById('taskInput');
     const addTaskBtn = document.getElementById('addTaskBtn');
-    const exportBtn = document.getElementById('exportBtn');
-    const importBtn = document.getElementById('importBtn');
-    const importInput = document.getElementById('importInput');
+    const exportMdBtn = document.getElementById('exportMdBtn');
+    const importMdBtn = document.getElementById('importMdBtn');
+    const importMdInput = document.getElementById('importMdInput');
     const clearAllBtn = document.getElementById('clearAllBtn');
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
+    const importJsonBtn = document.getElementById('importJsonBtn');
+    const importJsonInput = document.getElementById('importJsonInput');
+    const advancedJson = document.getElementById('advancedJson');
+    const advancedJsonToggle = document.getElementById('advancedJsonToggle');
     const statsEl = document.getElementById('stats');
     const listEl = document.getElementById('todoList');
     const emptyStateEl = document.getElementById('emptyState');
 
     let todos = [];
+    let editingId = null;
 
     function createId() {
       return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -362,23 +449,111 @@
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'todo-checkbox';
+        checkbox.disabled = editingId !== null;
         checkbox.checked = todo.completed;
         checkbox.setAttribute('aria-label', 'Toggle task completed');
         checkbox.addEventListener('change', () => toggleTodo(todo.id));
 
-        const title = document.createElement('p');
-        title.className = 'todo-title';
-        title.textContent = todo.title;
+        if (editingId === todo.id) {
+          const editInput = document.createElement('input');
+          editInput.type = 'text';
+          editInput.value = todo.title;
+          editInput.setAttribute('aria-label', 'Edit task');
+          editInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+              const next = editInput.value.trim();
+              if (!next) {
+                editingId = null;
+                render();
+                return;
+              }
+              todos = todos.map((t) => {
+                if (t.id !== todo.id) return t;
+                return { ...t, title: next };
+              });
+              editingId = null;
+              saveTodos();
+              render();
+              return;
+            }
+            if (event.key === 'Escape') {
+              editingId = null;
+              render();
+            }
+          });
 
-        const deleteBtn = document.createElement('button');
-        deleteBtn.type = 'button';
-        deleteBtn.className = 'icon-btn danger';
-        deleteBtn.setAttribute('aria-label', 'Delete task');
-        deleteBtn.title = 'Delete task';
-        deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-        deleteBtn.addEventListener('click', () => deleteTodo(todo.id));
+          const saveBtn = document.createElement('button');
+          saveBtn.type = 'button';
+          saveBtn.className = 'icon-btn';
+          saveBtn.setAttribute('aria-label', 'Save task');
+          saveBtn.title = 'Save task';
+          saveBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+          saveBtn.addEventListener('click', () => {
+            const next = editInput.value.trim();
+            if (!next) {
+              editingId = null;
+              render();
+              return;
+            }
+            todos = todos.map((t) => {
+              if (t.id !== todo.id) return t;
+              return { ...t, title: next };
+            });
+            editingId = null;
+            saveTodos();
+            render();
+          });
 
-        main.append(checkbox, title, deleteBtn);
+          const cancelBtn = document.createElement('button');
+          cancelBtn.type = 'button';
+          cancelBtn.className = 'icon-btn danger';
+          cancelBtn.setAttribute('aria-label', 'Cancel editing');
+          cancelBtn.title = 'Cancel editing';
+          cancelBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+          cancelBtn.addEventListener('click', () => {
+            editingId = null;
+            render();
+          });
+
+          main.append(checkbox, editInput, saveBtn, cancelBtn);
+          requestAnimationFrame(() => {
+            editInput.focus();
+            editInput.select();
+          });
+        } else {
+          const title = document.createElement('p');
+          title.className = 'todo-title';
+          title.textContent = todo.title;
+
+          const locked = editingId !== null;
+
+          const editBtn = document.createElement('button');
+          editBtn.type = 'button';
+          editBtn.className = 'icon-btn';
+          editBtn.setAttribute('aria-label', 'Edit task');
+          editBtn.title = 'Edit task';
+          editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+          editBtn.disabled = locked;
+          editBtn.addEventListener('click', () => {
+            if (locked) return;
+            editingId = todo.id;
+            render();
+          });
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.type = 'button';
+          deleteBtn.className = 'icon-btn danger';
+          deleteBtn.setAttribute('aria-label', 'Delete task');
+          deleteBtn.title = 'Delete task';
+          deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+          deleteBtn.disabled = locked;
+          deleteBtn.addEventListener('click', () => {
+            if (locked) return;
+            deleteTodo(todo.id);
+          });
+
+          main.append(checkbox, title, editBtn, deleteBtn);
+        }
         item.appendChild(main);
 
         listEl.appendChild(item);
@@ -424,6 +599,49 @@
       render();
     }
 
+    function exportMd() {
+      const lines = todos.map((t) => `- [${t.completed ? 'x' : ' '}] ${t.title}`);
+      const data = `${lines.join('\n')}\n`;
+      const blob = new Blob([data], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `todo-list-${date}.md`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function importMd(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const text = String(reader.result || '');
+          const nextTodos = [];
+          for (const line of text.split(/\r?\n/)) {
+            const m = line.match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/);
+            if (!m) continue;
+            const completed = m[1].toLowerCase() === 'x';
+            const title = String(m[2] || '').trim();
+            if (!title) continue;
+            nextTodos.push({ id: createId(), title, completed });
+          }
+          todos = nextTodos;
+          editingId = null;
+          saveTodos();
+          render();
+        } catch {
+          alert('Import failed. Please choose a valid Markdown checklist file.');
+        }
+      };
+      reader.onerror = () => {
+        alert('Import failed. Could not read file.');
+      };
+      reader.readAsText(file);
+    }
+
     function exportJson() {
       const data = JSON.stringify(todos, null, 2);
       const blob = new Blob([data], { type: 'application/json' });
@@ -446,6 +664,7 @@
           if (!Array.isArray(parsed)) throw new Error('Invalid file format');
           const imported = parsed.map(normalizeTodo).filter(Boolean);
           todos = imported;
+          editingId = null;
           saveTodos();
           render();
         } catch {
@@ -462,14 +681,26 @@
     taskInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') addTodo();
     });
-    exportBtn.addEventListener('click', exportJson);
-    importBtn.addEventListener('click', () => importInput.click());
-    importInput.addEventListener('change', () => {
-      const file = importInput.files && importInput.files[0];
-      if (file) importJson(file);
-      importInput.value = '';
+    exportMdBtn.addEventListener('click', exportMd);
+    importMdBtn.addEventListener('click', () => importMdInput.click());
+    importMdInput.addEventListener('change', () => {
+      const file = importMdInput.files && importMdInput.files[0];
+      if (file) importMd(file);
+      importMdInput.value = '';
     });
     clearAllBtn.addEventListener('click', clearAll);
+    exportJsonBtn.addEventListener('click', exportJson);
+    importJsonBtn.addEventListener('click', () => importJsonInput.click());
+    importJsonInput.addEventListener('change', () => {
+      const file = importJsonInput.files && importJsonInput.files[0];
+      if (file) importJson(file);
+      importJsonInput.value = '';
+    });
+
+    advancedJsonToggle.addEventListener('click', () => {
+      const isOpen = advancedJson.classList.toggle('open');
+      advancedJsonToggle.setAttribute('aria-expanded', String(isOpen));
+    });
 
     todos = loadTodos();
     render();

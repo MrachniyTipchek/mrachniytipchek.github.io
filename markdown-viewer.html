@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Markdown Viewer</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --surface: #24283b;
+      --text: #c0caf5;
+      --muted: #565f89;
+      --accent: #7aa2f7;
+      --accent-hover: #89b4fa;
+      --border: #3b4261;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .back-btn {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      width: 2rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: var(--bg);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .back-btn:hover {
+      background: var(--accent-hover);
+    }
+    .back-btn svg {
+      width: 1rem;
+      height: 1rem;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 1.75rem;
+      max-width: min(1100px, 100%);
+      width: 100%;
+      border: 1px solid var(--border);
+    }
+    h1 {
+      margin: 0 0 1.25rem;
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+    .mode-switch {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .mode-btn {
+      border: none;
+      border-radius: 8px;
+      padding: 0.56rem 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .mode-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-hover);
+    }
+    .mode-btn.active {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+    .mode-btn.active:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: var(--bg);
+    }
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      min-height: min(70vh, 640px);
+    }
+    .split.preview-only {
+      grid-template-columns: 1fr;
+    }
+    .split.preview-only .pane-input {
+      display: none;
+    }
+    @media (max-width: 720px) {
+      .split {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+      .pane-input { min-height: 220px; }
+      .pane-preview { min-height: 280px; }
+    }
+    .pane {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .pane textarea {
+      flex: 1;
+      width: 100%;
+      min-height: 200px;
+      padding: 0.85rem;
+      font-size: 0.9rem;
+      font-family: ui-monospace, monospace;
+      line-height: 1.5;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      outline: none;
+      resize: vertical;
+    }
+    .pane textarea:focus {
+      border-color: var(--accent);
+    }
+    .preview {
+      flex: 1;
+      overflow: auto;
+      padding: 0.85rem 1rem;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .preview {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) #1f2335;
+    }
+    .preview::-webkit-scrollbar {
+      width: 10px;
+    }
+    .preview::-webkit-scrollbar-track {
+      background: #1f2335;
+      border-radius: 999px;
+    }
+    .preview::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 999px;
+      border: 2px solid #1f2335;
+    }
+    .preview::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
+    }
+    .pane textarea {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) #1f2335;
+    }
+    .pane textarea::-webkit-scrollbar {
+      width: 10px;
+    }
+    .pane textarea::-webkit-scrollbar-track {
+      background: #1f2335;
+      border-radius: 999px;
+    }
+    .pane textarea::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 999px;
+      border: 2px solid #1f2335;
+    }
+    .pane textarea::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
+    }
+    .preview pre {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) #1f2335;
+    }
+    .preview pre::-webkit-scrollbar {
+      width: 10px;
+    }
+    .preview pre::-webkit-scrollbar-track {
+      background: #1f2335;
+      border-radius: 999px;
+    }
+    .preview pre::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 999px;
+      border: 2px solid #1f2335;
+    }
+    .preview pre::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
+    }
+    .preview :first-child { margin-top: 0; }
+    .preview :last-child { margin-bottom: 0; }
+    .preview h1, .preview h2, .preview h3, .preview h4 {
+      color: var(--accent-hover);
+      font-weight: 600;
+      margin: 1em 0 0.5em;
+    }
+    .preview h1 { font-size: 1.35rem; }
+    .preview h2 { font-size: 1.15rem; }
+    .preview h3 { font-size: 1.05rem; }
+    .preview p { margin: 0.65em 0; }
+    .preview a { color: var(--accent); }
+    .preview a:hover { color: var(--accent-hover); }
+    .preview ul, .preview ol { margin: 0.65em 0; padding-left: 1.35rem; }
+    .preview li { margin: 0.25em 0; }
+    .preview blockquote {
+      margin: 0.65em 0;
+      padding-left: 0.85rem;
+      border-left: 3px solid var(--accent);
+      color: var(--muted);
+    }
+    .preview code {
+      font-family: ui-monospace, monospace;
+      font-size: 0.88em;
+      padding: 0.15em 0.4em;
+      background: var(--surface);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .preview pre {
+      margin: 0.75em 0;
+      padding: 0.75rem;
+      overflow: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .preview pre code {
+      padding: 0;
+      background: none;
+      border: none;
+      font-size: 0.85rem;
+    }
+    .preview hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.25em 0;
+    }
+    .preview table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 0.75em 0;
+      font-size: 0.9rem;
+    }
+    .preview th, .preview td {
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.6rem;
+      text-align: left;
+    }
+    .preview th {
+      background: var(--surface);
+      color: var(--accent-hover);
+    }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back-btn" aria-label="Back to home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
+  <div class="card">
+    <h1>Markdown Viewer</h1>
+    <div class="mode-switch">
+      <button type="button" class="mode-btn active" id="modeEditor">Editor</button>
+      <button type="button" class="mode-btn" id="modePreview">Preview</button>
+    </div>
+    <div class="split" id="splitView">
+      <div class="pane pane-input">
+        <textarea id="md" spellcheck="false" placeholder="# Heading&#10;&#10;Text with **bold** and *italic*."></textarea>
+      </div>
+      <div class="pane pane-preview preview" id="out"></div>
+    </div>
+  </div>
+  <script type="module">
+    import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
+
+    const input = document.getElementById('md');
+    const out = document.getElementById('out');
+    const splitView = document.getElementById('splitView');
+    const modeEditor = document.getElementById('modeEditor');
+    const modePreview = document.getElementById('modePreview');
+
+    function render() {
+      out.innerHTML = marked.parse(input.value);
+    }
+
+    function setMode(mode) {
+      const isPreview = mode === 'preview';
+      splitView.classList.toggle('preview-only', isPreview);
+      modeEditor.classList.toggle('active', !isPreview);
+      modePreview.classList.toggle('active', isPreview);
+    }
+
+    input.addEventListener('input', render);
+    modeEditor.addEventListener('click', () => setMode('editor'));
+    modePreview.addEventListener('click', () => setMode('preview'));
+    setMode('editor');
+    render();
+  </script>
+</body>
+</html>

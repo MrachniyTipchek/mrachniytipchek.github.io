@@ -61,7 +61,7 @@
       background: var(--surface);
       border-radius: 12px;
       padding: 1.5rem;
-      max-width: min(900px, 100%);
+      max-width: min(1100px, 100%);
       width: 100%;
       border: 1px solid var(--border);
       margin: 3rem auto 1rem;
@@ -200,11 +200,18 @@
       gap: 0.5rem;
       align-items: center;
       flex-wrap: wrap;
+      margin-right: auto;
     }
-    input[type="file"] {
-      max-width: 100%;
-      font-size: 0.85rem;
-      color: var(--muted);
+    .visually-hidden-file {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
     .btn {
       border: 1px solid var(--border);
@@ -225,6 +232,33 @@
       border-color: var(--border);
       color: var(--muted);
     }
+    .upload-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.38rem;
+      min-width: 74px;
+      height: 28px;
+      padding: 0 0.7rem;
+      font-size: 0.78rem;
+      line-height: 1;
+      text-decoration: none;
+    }
+    .upload-btn svg,
+    .icon-btn svg {
+      width: 0.82rem;
+      height: 0.82rem;
+      flex: 0 0 auto;
+    }
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      line-height: 1;
+    }
     .preview {
       background: transparent;
       border: none;
@@ -235,11 +269,11 @@
       align-items: center;
       gap: 0.45rem;
       width: 100%;
-      max-width: 320px;
+      max-width: min(440px, 100%);
       justify-self: center;
     }
     #qrMount {
-      width: min(280px, 100%);
+      width: min(100%, clamp(280px, 36vw, 420px));
       aspect-ratio: 1;
       display: flex;
       align-items: center;
@@ -261,8 +295,8 @@
       display: flex;
       gap: 0.4rem;
       flex-wrap: wrap;
-      justify-content: flex-end;
-      width: min(280px, 100%);
+      justify-content: flex-start;
+      width: min(100%, clamp(280px, 36vw, 420px));
       align-self: center;
       align-items: stretch;
     }
@@ -343,16 +377,20 @@
             </div>
           </div>
         </div>
-        <div class="field">
-          <div class="file-row">
-            <input type="file" id="logo" accept="image/*" aria-label="Center logo">
-            <button type="button" class="btn" id="clearLogo">Clear</button>
-          </div>
-        </div>
       </div>
       <div class="preview">
         <div id="qrMount" class="empty"></div>
         <div class="actions">
+          <div class="file-row">
+            <input type="file" id="logo" class="visually-hidden-file" accept="image/*" aria-label="Center logo">
+            <label for="logo" class="btn upload-btn" aria-label="Upload logo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 20h16"/></svg>
+              Logo
+            </label>
+            <button type="button" class="btn icon-btn" id="clearLogo" disabled aria-label="Clear logo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </button>
+          </div>
           <button type="button" class="btn download-btn" id="downloadPng" disabled aria-label="Download PNG">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
             PNG
@@ -389,12 +427,12 @@
 
     let qrCode = null;
     let logoDataUrl = '';
+    let renderedLogoDataUrl = '';
     let renderFrame = 0;
     let activePicker = null;
     let qrLibraryLoader = null;
 
     const MAX_LOGO_BYTES = 2 * 1024 * 1024;
-    const QR_RENDER_SIZE = 280;
     const ALLOWED_LOGO_TYPES = new Set([
       'image/png',
       'image/jpeg',
@@ -410,6 +448,10 @@
     function setDownloadState(enabled) {
       downloadPng.disabled = !enabled;
       downloadSvg.disabled = !enabled;
+    }
+
+    function setLogoState(enabled) {
+      clearLogo.disabled = !enabled;
     }
 
     function ensureQrLibrary() {
@@ -650,14 +692,18 @@
       if (!p.control.contains(e.target)) closePickers();
     });
 
-    function getOptions(text) {
+    function getQrRenderSize() {
+      return Math.max(220, Math.floor(qrMount.clientWidth || 280));
+    }
+
+    function getOptions(text, size) {
       const fg = normalizeHex(fgHex.value, '#000000');
       const bg = normalizeHex(bgHex.value, '#ffffff');
       const style = STYLE_PRESETS[styleType.value] || STYLE_PRESETS.standard;
       const hasLogo = Boolean(logoDataUrl);
       const options = {
-        width: QR_RENDER_SIZE,
-        height: QR_RENDER_SIZE,
+        width: size,
+        height: size,
         type: 'svg',
         data: text,
         margin: 8,
@@ -697,6 +743,7 @@
         qrMount.classList.add('empty');
         qrMount.innerHTML = '';
         qrCode = null;
+        renderedLogoDataUrl = '';
         setDownloadState(false);
         return;
       }
@@ -704,23 +751,27 @@
         qrMount.classList.add('empty');
         qrMount.innerHTML = '';
         qrCode = null;
+        renderedLogoDataUrl = '';
         setDownloadState(false);
         setError('Failed to load QR code library');
         return;
       }
       qrMount.classList.remove('empty');
-      const options = getOptions(text);
+      const options = getOptions(text, getQrRenderSize());
       try {
-        if (!qrCode) {
+        const shouldRecreate = !qrCode || renderedLogoDataUrl !== logoDataUrl;
+        if (shouldRecreate) {
           qrCode = new QRCodeStyling(options);
           qrMount.innerHTML = '';
           qrCode.append(qrMount);
         } else {
           qrCode.update(options);
         }
+        renderedLogoDataUrl = logoDataUrl;
         setDownloadState(true);
       } catch (error) {
         qrCode = null;
+        renderedLogoDataUrl = '';
         qrMount.classList.add('empty');
         qrMount.innerHTML = '';
         setDownloadState(false);
@@ -738,13 +789,18 @@
 
     contentEl.addEventListener('input', scheduleRender);
     styleType.addEventListener('change', render);
+    window.addEventListener('resize', scheduleRender);
 
     logoInput.addEventListener('change', () => {
       const file = logoInput.files && logoInput.files[0];
-      if (!file) return;
+      if (!file) {
+        setLogoState(Boolean(logoDataUrl));
+        return;
+      }
       if (!ALLOWED_LOGO_TYPES.has(file.type)) {
         logoInput.value = '';
         logoDataUrl = '';
+        setLogoState(false);
         setError('Supported formats: PNG, JPG, WEBP, GIF, SVG');
         render();
         return;
@@ -752,6 +808,7 @@
       if (file.size > MAX_LOGO_BYTES) {
         logoInput.value = '';
         logoDataUrl = '';
+        setLogoState(false);
         setError('Logo size must be up to 2 MB');
         render();
         return;
@@ -759,11 +816,13 @@
       const reader = new FileReader();
       reader.onload = () => {
         logoDataUrl = typeof reader.result === 'string' ? reader.result : '';
+        setLogoState(Boolean(logoDataUrl));
         render();
       };
       reader.onerror = () => {
         logoInput.value = '';
         logoDataUrl = '';
+        setLogoState(false);
         setError('Failed to read logo file');
         render();
       };
@@ -773,6 +832,7 @@
     clearLogo.addEventListener('click', () => {
       logoInput.value = '';
       logoDataUrl = '';
+      setLogoState(false);
       render();
     });
 
@@ -789,6 +849,7 @@
 
     async function initialize() {
       setDownloadState(false);
+      setLogoState(false);
       setPickerFromHex('fg', '#000000', false);
       setPickerFromHex('bg', '#ffffff', false);
       const libraryReady = await ensureQrLibrary();

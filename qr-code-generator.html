@@ -99,11 +99,6 @@
     @media (max-width: 520px) {
       .color-row { grid-template-columns: 1fr; }
     }
-    .picker-row {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-    }
     .color-control {
       position: relative;
     }
@@ -205,6 +200,12 @@
       border-color: var(--accent);
       color: var(--accent-hover);
     }
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      border-color: var(--border);
+      color: var(--muted);
+    }
     .preview {
       background: var(--bg);
       border: 1px solid var(--border);
@@ -238,7 +239,7 @@
       display: block;
     }
     #qrMount.empty::after {
-      content: "Введите текст";
+      content: "Enter text";
       color: var(--muted);
       font-size: 0.9rem;
     }
@@ -265,11 +266,11 @@
     <div class="split">
       <div class="pane">
         <div class="field">
-          <label for="content">Текст / ссылка / команда</label>
+          <label for="content">Text / URL / command</label>
           <textarea id="content" placeholder="https://example.com"></textarea>
         </div>
         <div class="field">
-          <label for="styleType">Стиль</label>
+          <label for="styleType">Style</label>
           <select id="styleType">
             <option value="standard" selected>Standard</option>
             <option value="rounded">Rounded</option>
@@ -279,7 +280,7 @@
         </div>
         <div class="color-row">
           <div class="field">
-            <label for="fgHex">Цвет QR (Hex)</label>
+            <label for="fgHex">QR color (Hex)</label>
             <div class="color-control" id="fgControl">
               <div class="color-inline">
                 <button type="button" class="color-trigger" id="fgTrigger" aria-label="QR color picker"></button>
@@ -297,7 +298,7 @@
             </div>
           </div>
           <div class="field">
-            <label for="bgHex">Цвет фона (Hex)</label>
+            <label for="bgHex">Background color (Hex)</label>
             <div class="color-control" id="bgControl">
               <div class="color-inline">
                 <button type="button" class="color-trigger" id="bgTrigger" aria-label="Background color picker"></button>
@@ -316,10 +317,10 @@
           </div>
         </div>
         <div class="field">
-          <label for="logo">Логотип по центру</label>
+          <label for="logo">Center logo</label>
           <div class="file-row">
             <input type="file" id="logo" accept="image/*">
-            <button type="button" class="btn" id="clearLogo">Убрать</button>
+            <button type="button" class="btn" id="clearLogo">Clear</button>
           </div>
         </div>
       </div>
@@ -327,8 +328,8 @@
         <div id="qrMount" class="empty"></div>
         <p class="err" id="qrErr"></p>
         <div class="actions">
-          <button type="button" class="btn" id="downloadPng">PNG</button>
-          <button type="button" class="btn" id="downloadSvg">SVG</button>
+          <button type="button" class="btn" id="downloadPng" disabled>PNG</button>
+          <button type="button" class="btn" id="downloadSvg" disabled>SVG</button>
         </div>
       </div>
     </div>
@@ -356,8 +357,40 @@
 
     let qrCode = null;
     let logoDataUrl = '';
-    let timer = null;
+    let renderFrame = 0;
     let activePicker = null;
+    let qrLibraryLoader = null;
+
+    const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+    const ALLOWED_LOGO_TYPES = new Set([
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/gif',
+      'image/svg+xml'
+    ]);
+
+    function setError(text) {
+      qrErr.textContent = text;
+    }
+
+    function setDownloadState(enabled) {
+      downloadPng.disabled = !enabled;
+      downloadSvg.disabled = !enabled;
+    }
+
+    function ensureQrLibrary() {
+      if (typeof window.QRCodeStyling === 'function') return Promise.resolve(true);
+      if (qrLibraryLoader) return qrLibraryLoader;
+      qrLibraryLoader = new Promise((resolve) => {
+        const fallback = document.createElement('script');
+        fallback.src = 'https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js';
+        fallback.onload = () => resolve(typeof window.QRCodeStyling === 'function');
+        fallback.onerror = () => resolve(false);
+        document.head.appendChild(fallback);
+      });
+      return qrLibraryLoader;
+    }
 
     function normalizeHex(value, fallback) {
       let v = value.trim();
@@ -505,6 +538,7 @@
       const p = pickerState[key];
       const move = (clientX) => {
         const rect = p.hue.getBoundingClientRect();
+        if (!rect.width) return;
         const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
         p.h = clamp360((x / rect.width) * 360);
         applyPickerColor(key, true);
@@ -526,6 +560,7 @@
       const p = pickerState[key];
       const move = (clientX, clientY) => {
         const rect = p.sv.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
         const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
         const y = Math.max(0, Math.min(rect.height, clientY - rect.top));
         p.s = clamp01(x / rect.width);
@@ -608,12 +643,21 @@
     }
 
     function render() {
-      qrErr.textContent = '';
+      setError('');
       const text = contentEl.value.trim();
       if (!text) {
         qrMount.classList.add('empty');
         qrMount.innerHTML = '';
         qrCode = null;
+        setDownloadState(false);
+        return;
+      }
+      if (typeof window.QRCodeStyling !== 'function') {
+        qrMount.classList.add('empty');
+        qrMount.innerHTML = '';
+        qrCode = null;
+        setDownloadState(false);
+        setError('Failed to load QR code library');
         return;
       }
       qrMount.classList.remove('empty');
@@ -627,17 +671,22 @@
         } else {
           qrCode.update(options);
         }
+        setDownloadState(true);
       } catch (error) {
         qrCode = null;
         qrMount.classList.add('empty');
         qrMount.innerHTML = '';
-        qrErr.textContent = error && error.message ? error.message : 'Ошибка генерации';
+        setDownloadState(false);
+        setError(error && error.message ? error.message : 'Generation error');
       }
     }
 
     function scheduleRender() {
-      clearTimeout(timer);
-      timer = setTimeout(render, 120);
+      if (renderFrame) cancelAnimationFrame(renderFrame);
+      renderFrame = requestAnimationFrame(() => {
+        renderFrame = 0;
+        render();
+      });
     }
 
     contentEl.addEventListener('input', scheduleRender);
@@ -647,9 +696,29 @@
     logoInput.addEventListener('change', () => {
       const file = logoInput.files && logoInput.files[0];
       if (!file) return;
+      if (!ALLOWED_LOGO_TYPES.has(file.type)) {
+        logoInput.value = '';
+        logoDataUrl = '';
+        setError('Supported formats: PNG, JPG, WEBP, GIF, SVG');
+        render();
+        return;
+      }
+      if (file.size > MAX_LOGO_BYTES) {
+        logoInput.value = '';
+        logoDataUrl = '';
+        setError('Logo size must be up to 2 MB');
+        render();
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
         logoDataUrl = typeof reader.result === 'string' ? reader.result : '';
+        render();
+      };
+      reader.onerror = () => {
+        logoInput.value = '';
+        logoDataUrl = '';
+        setError('Failed to read logo file');
         render();
       };
       reader.readAsDataURL(file);
@@ -661,17 +730,30 @@
       render();
     });
 
-    downloadPng.addEventListener('click', () => {
-      if (!qrCode || !contentEl.value.trim()) return;
-      qrCode.download({ name: 'qr', extension: 'png' });
-    });
-    downloadSvg.addEventListener('click', () => {
-      if (!qrCode || !contentEl.value.trim()) return;
-      qrCode.download({ name: 'qr', extension: 'svg' });
-    });
+    function handleDownload(extension) {
+      if (!qrCode || !contentEl.value.trim()) {
+        setError('Enter data for the QR code first');
+        return;
+      }
+      qrCode.download({ name: 'qr', extension });
+    }
 
-    setPickerFromHex('fg', '#000000', false);
-    setPickerFromHex('bg', '#ffffff', false);
+    downloadPng.addEventListener('click', () => handleDownload('png'));
+    downloadSvg.addEventListener('click', () => handleDownload('svg'));
+
+    async function initialize() {
+      setDownloadState(false);
+      setPickerFromHex('fg', '#000000', false);
+      setPickerFromHex('bg', '#ffffff', false);
+      const libraryReady = await ensureQrLibrary();
+      if (!libraryReady) {
+        setError('QR code library is unavailable, check your connection');
+        return;
+      }
+      render();
+    }
+
+    initialize();
   </script>
 </body>
 </html>

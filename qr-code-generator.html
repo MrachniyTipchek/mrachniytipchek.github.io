@@ -324,7 +324,7 @@
       text-align: right;
     }
   </style>
-  <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+  <script src="vendor/qr-code-styling.js"></script>
 </head>
 <body>
   <a href="index.html" class="back-btn" aria-label="Back to home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
@@ -459,7 +459,7 @@
       if (qrLibraryLoader) return qrLibraryLoader;
       qrLibraryLoader = new Promise((resolve) => {
         const fallback = document.createElement('script');
-        fallback.src = 'https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js';
+        fallback.src = 'vendor/qr-code-styling.js';
         fallback.onload = () => resolve(typeof window.QRCodeStyling === 'function');
         fallback.onerror = () => resolve(false);
         document.head.appendChild(fallback);

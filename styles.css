@@ -931,13 +931,24 @@ body.page-qr::-webkit-scrollbar-thumb:hover {
 }
 
 .page-qr #qrMount canvas,
-.page-qr #qrMount svg,
 .page-qr #qrMount img {
   width: 100%;
   height: 100%;
   max-width: 100%;
   max-height: 100%;
   display: block;
+}
+
+.page-qr #qrMount svg {
+  display: block;
+  flex: 0 0 auto;
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: content-box;
+}
+
+.page-qr #qrMount[data-qr-style='standard'] svg {
+  shape-rendering: crispEdges;
 }
 
 .page-qr .actions {

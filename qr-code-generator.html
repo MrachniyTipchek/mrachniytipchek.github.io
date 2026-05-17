@@ -388,7 +388,17 @@
     });
 
     function getQrRenderSize() {
-      return Math.max(220, Math.floor(qrMount.clientWidth || 280));
+      const rect = qrMount.getBoundingClientRect();
+      const edge = Math.min(rect.width || 280, rect.height || 280);
+      return Math.max(220, Math.floor(edge));
+    }
+
+    function syncQrSvgPixelSize(px) {
+      const svg = qrMount.querySelector('svg');
+      if (!svg) return;
+      const n = Math.max(220, Math.floor(px));
+      svg.style.width = `${n}px`;
+      svg.style.height = `${n}px`;
     }
 
     function getOptions(text, size) {
@@ -452,7 +462,9 @@
         return;
       }
       qrMount.classList.remove('empty');
-      const options = getOptions(text, getQrRenderSize());
+      qrMount.dataset.qrStyle = styleType.value;
+      const renderPx = getQrRenderSize();
+      const options = getOptions(text, renderPx);
       try {
         const shouldRecreate = !qrCode || renderedLogoDataUrl !== logoDataUrl;
         if (shouldRecreate) {
@@ -462,6 +474,9 @@
         } else {
           qrCode.update(options);
         }
+        const bumpSvgSize = () => syncQrSvgPixelSize(renderPx);
+        bumpSvgSize();
+        requestAnimationFrame(bumpSvgSize);
         renderedLogoDataUrl = logoDataUrl;
         setDownloadState(true);
       } catch (error) {
